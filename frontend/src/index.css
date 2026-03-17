@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    font-family: 'Monda', sans-serif;
+    background: #ffffff;
+    color: #111111;
+    margin: 0;
+    padding: 0;
+  }
+  h1, h2 {
+    font-family: 'Bebas Neue', cursive;
+  }
+  h3, h4 {
+    font-family: 'Roboto', sans-serif;
+    font-weight: 700;
+  }
+}
+
+@layer components {
+  .icon-gradient {
+    background: linear-gradient(135deg, #EB5E28 0%, #23B5D3 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .btn-primary {
+    @apply rounded-full bg-white border border-white text-brand-pink font-monda font-bold px-6 py-2 transition-all duration-200 hover:bg-brand-pink hover:text-white hover:border-brand-pink;
+  }
+
+  .btn-outline {
+    @apply rounded-full border-2 border-brand-orange text-brand-orange font-monda font-bold px-6 py-2 transition-all duration-200 hover:bg-brand-orange hover:text-white;
+  }
+
+  .btn-filled {
+    @apply rounded-full bg-brand-orange text-white font-monda font-bold px-6 py-2 transition-all duration-200 hover:opacity-90;
+  }
+
+  .input-field {
+    @apply w-full border border-gray-200 rounded-xl px-4 py-3 font-monda text-[15px] focus:outline-none focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20 transition-all;
+  }
+
+  .card {
+    @apply bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-200;
+  }
+
+  .status-badge-available {
+    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full bg-green-50 text-green-700 text-xs font-bold font-monda;
+  }
+
+  .status-badge-full {
+    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full bg-red-50 text-red-600 text-xs font-bold font-monda;
+  }
+
+  .status-badge-limited {
+    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full bg-yellow-50 text-yellow-700 text-xs font-bold font-monda;
+  }
+}
+
+/* Icon SVG gradient support */
+.icon-grad svg {
+  fill: url(#iconGradient);
+}
+
+/* Page transition */
+.page-enter {
+  animation: fadeUp 0.3s ease forwards;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #f1f1f1; }
+::-webkit-scrollbar-thumb { background: #EFA7A7; border-radius: 3px; }

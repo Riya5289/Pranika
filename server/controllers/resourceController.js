@@ -1,0 +1,36 @@
+const Resource = require('../models/Resource');
+const Hospital = require('../models/Hospital');
+
+exports.getResources = async (req, res) => {
+  try {
+    const { filter } = req.query;
+    let resources = await Resource.find().populate('hospitalId', 'name address distance');
+
+    if (filter === 'icu') resources = resources.filter(r => r.icuBeds.available > 0);
+    if (filter === 'general') resources = resources.filter(r => r.generalBeds.available > 0);
+    if (filter === 'ventilator') resources = resources.filter(r => r.ventilators.available > 0);
+    if (filter === 'oxygen') resources = resources.filter(r => r.oxygen === 'Available');
+
+    res.json({ success: true, count: resources.length, data: resources });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.seedResources = async (req, res) => {
+  try {
+    const hospitals = await Hospital.find();
+    await Resource.deleteMany({});
+    const resources = hospitals.map(h => ({
+      hospitalId: h._id,
+      icuBeds: { total: Math.floor(Math.random() * 30) + 10, available: Math.floor(Math.random() * 15) },
+      generalBeds: { total: Math.floor(Math.random() * 100) + 50, available: Math.floor(Math.random() * 50) },
+      ventilators: { total: Math.floor(Math.random() * 20) + 5, available: Math.floor(Math.random() * 10) },
+      oxygen: ['Available', 'Limited', 'Available', 'Available'][Math.floor(Math.random() * 4)]
+    }));
+    await Resource.insertMany(resources);
+    res.json({ success: true, message: `${resources.length} resource records seeded` });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
