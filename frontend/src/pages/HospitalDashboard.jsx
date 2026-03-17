@@ -147,10 +147,24 @@ export default function HospitalDashboard() {
           </h1>
           <p className="font-monda text-gray-500 mt-1">{hospital?.hospitalName}</p>
         </div>
-        <button onClick={() => { logoutHospital(); navigate('/hospital/login'); }}
-          className="rounded-full border-2 border-gray-200 text-gray-500 font-monda text-sm font-bold px-4 py-2 hover:border-red-300 hover:text-red-500 transition-all">
-          Logout
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => navigate('/hospital/resources')}
+            className="rounded-full bg-[#EB5E28] text-white font-monda text-sm font-bold px-4 py-2 hover:bg-[#D94A1F] transition-all">
+            Resource Sharing
+          </button>
+          <button onClick={() => navigate('/hospital/patient-management')}
+            className="rounded-full bg-[#23B5D3] text-white font-monda text-sm font-bold px-4 py-2 hover:bg-[#1E98B3] transition-all">
+            Patient Management
+          </button>
+          <button onClick={() => navigate('/hospital/patient-transfers')}
+            className="rounded-full bg-[#22c55e] text-white font-monda text-sm font-bold px-4 py-2 hover:bg-[#1aa34a] transition-all">
+            Patient Transfers
+          </button>
+          <button onClick={() => { logoutHospital(); navigate('/hospital/login'); }}
+            className="rounded-full border-2 border-gray-200 text-gray-500 font-monda text-sm font-bold px-4 py-2 hover:border-red-300 hover:text-red-500 transition-all">
+            Logout
+          </button>
+        </div>
       </div>
 
       {/* Flash message */}

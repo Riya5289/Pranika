@@ -66,8 +66,8 @@ export default function HospitalDetail() {
             </div>
             <div>
               <p className="font-monda text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Contact</p>
-              <a href={`tel:${hospital.contact}`} className="font-monda text-[#EB5E28] hover:underline">
-                {hospital.contact}
+              <a href={`tel:${hospital.contact.phone}`} className="font-monda text-[#EB5E28] hover:underline">
+                {hospital.contact.phone}
               </a>
             </div>
           </div>

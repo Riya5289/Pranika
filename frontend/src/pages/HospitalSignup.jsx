@@ -149,7 +149,17 @@ export default function HospitalSignup() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-80px)] flex items-center justify-center px-4 py-12">
+    <div className="min-h-[calc(100vh-80px)] flex items-center justify-center px-4 py-12 relative">
+      <button
+        type="button"
+        onClick={() => navigate('/')}
+        className="absolute top-6 left-6 flex items-center gap-2 font-monda text-sm text-gray-600 hover:text-[#EB5E28] transition-colors"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M19 12H5M12 5l-7 7 7 7"/>
+        </svg>
+        Home
+      </button>
       <div className="w-full max-w-xl">
         <div className="card p-8 sm:p-10">
           <div className="mb-8 text-center">

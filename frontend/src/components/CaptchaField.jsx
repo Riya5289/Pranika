@@ -37,7 +37,7 @@ export default function CaptchaField({ value, onChange, onIdChange }) {
           placeholder="Answer"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="input-field w-24"
+          className="input-field w-24 pr-1.5"
         />
         <button
           type="button"

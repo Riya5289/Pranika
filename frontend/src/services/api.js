@@ -63,4 +63,29 @@ export const getHospitalLogs         = () => api.get('/hospital/logs');
 // Specialists (user-facing)
 export const getSpecialists = (params) => api.get('/specialists', { params });
 
+// Resource Requests (Hospital to Hospital)
+export const searchHospitalsWithResources = (params) => api.get('/resource-requests/search', { params });
+export const createResourceRequest = (data) => api.post('/resource-requests', data);
+export const getPendingResourceRequests = () => api.get('/resource-requests/pending');
+export const getMyResourceRequests = () => api.get('/resource-requests/my-requests');
+export const approveResourceRequest = (requestId, data) => api.post(`/resource-requests/${requestId}/approve`, data);
+export const rejectResourceRequest = (requestId, data) => api.post(`/resource-requests/${requestId}/reject`, data);
+export const completeResourceRequest = (requestId) => api.post(`/resource-requests/${requestId}/complete`);
+
+// Hospital Patient Management
+export const addPatient = (data) => api.post('/hospital-patients/patients/add', data);
+export const getHospitalPatients = (params) => api.get('/hospital-patients/patients', { params });
+export const getPatientById = (patientId) => api.get(`/hospital-patients/patients/${patientId}`);
+export const updatePatient = (patientId, data) => api.put(`/hospital-patients/patients/${patientId}`, data);
+
+// Hospital Patient Transfers
+export const initiatePatientTransfer = (data) => api.post('/hospital-patients/transfers/initiate', data);
+export const getPendingPatientTransfers = () => api.get('/hospital-patients/transfers/pending');
+export const getMyPatientTransfers = () => api.get('/hospital-patients/transfers/my-transfers');
+export const approvePatientTransfer = (transferId, data) => api.post(`/hospital-patients/transfers/${transferId}/approve`, data);
+export const rejectPatientTransfer = (transferId, data) => api.post(`/hospital-patients/transfers/${transferId}/reject`, data);
+export const markPatientInTransit = (transferId, data) => api.post(`/hospital-patients/transfers/${transferId}/in-transit`, data);
+export const completePatientTransfer = (transferId) => api.post(`/hospital-patients/transfers/${transferId}/complete`);
+export const searchHospitalsBySpecialty = (params) => api.get('/hospital-patients/search-by-specialty', { params });
+
 export default api;

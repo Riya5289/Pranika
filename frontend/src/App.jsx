@@ -13,6 +13,9 @@ import { HospitalAuthProvider } from './context/HospitalAuthContext';
 import HospitalLogin from './pages/HospitalLogin';
 import HospitalSignup from './pages/HospitalSignup';
 import HospitalDashboard from './pages/HospitalDashboard';
+import ResourceRequest from './pages/ResourceRequest';
+import PatientManagement from './pages/PatientManagement';
+import PatientTransfer from './pages/PatientTransfer';
 import Landing from './pages/Landing';
 
 function Layout({ children }) {
@@ -55,6 +58,9 @@ export default function App() {
             {/* Hospital portal */}
             <Route path="/hospital" element={<Navigate to="/hospital/login" replace />} />
             <Route path="/hospital/dashboard" element={<Layout><HospitalDashboard /></Layout>} />
+            <Route path="/hospital/resources" element={<Layout><ResourceRequest /></Layout>} />
+            <Route path="/hospital/patient-management" element={<Layout><PatientManagement /></Layout>} />
+            <Route path="/hospital/patient-transfers" element={<Layout><PatientTransfer /></Layout>} />
 
             {/* Catch-all */}
             <Route path="*" element={<Navigate to="/" replace />} />
