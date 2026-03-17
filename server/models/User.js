@@ -18,8 +18,25 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: [true, 'Password is required'],
+    required: function() {
+      return !this.googleId; // Password required only if not OAuth user
+    },
     minlength: 6
+  },
+  googleId: {
+    type: String,
+    sparse: true
+  },
+  googleAccessToken: {
+    type: String
+  },
+  googleRefreshToken: {
+    type: String
+  },
+  role: {
+    type: String,
+    enum: ['user', 'hospital'],
+    default: 'user'
   }
 }, { timestamps: true });
 

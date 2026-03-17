@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getHospitals, seedHospitals } from '../services/api';
+import { getNearbyHospitals, seedHospitals } from '../services/api';
+import { getCurrentLocation } from '../utils/distance';
 import HospitalCard from '../components/HospitalCard';
 
 const SPECIALTIES = ['Cardiology', 'Neurology', 'Oncology', 'Emergency', 'Orthopedics', 'Pediatrics', 'Gynecology', 'Surgery'];
@@ -11,24 +12,54 @@ export default function Hospitals() {
   const [seeding, setSeeding] = useState(false);
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState({ specialty: '', type: '', maxDistance: '' });
+  const [userLocation, setUserLocation] = useState(null);
+  const [locationError, setLocationError] = useState(null);
 
   const fetchHospitals = useCallback(async () => {
     setLoading(true);
     try {
-      const params = { search, ...filters };
+      let params = { search, ...filters };
       Object.keys(params).forEach((k) => !params[k] && delete params[k]);
-      const res = await getHospitals(params);
+
+      let res;
+      if (userLocation) {
+        // Use nearby API with user location
+        params.lat = userLocation.lat;
+        params.lng = userLocation.lng;
+        res = await getNearbyHospitals(params);
+      } else {
+        // Fallback to general API without location
+        res = await getNearbyHospitals(params); // Still use nearby but without lat/lng, it will return all
+      }
+
       setHospitals(res.data.data);
     } catch {
       setHospitals([]);
     }
     setLoading(false);
-  }, [search, filters]);
+  }, [search, filters, userLocation]);
 
   useEffect(() => {
     const t = setTimeout(fetchHospitals, 300);
     return () => clearTimeout(t);
   }, [fetchHospitals]);
+
+  // Fetch user location on mount
+  useEffect(() => {
+    if (!userLocation && !locationError) {
+      getCurrentLocation()
+        .then(location => {
+          setUserLocation(location);
+          // Refetch hospitals with new location
+          fetchHospitals();
+        })
+        .catch(error => {
+          setLocationError(error.message);
+          // Still fetch hospitals without location
+          fetchHospitals();
+        });
+    }
+  }, []);
 
   const handleSeed = async () => {
     setSeeding(true);
@@ -101,9 +132,21 @@ export default function Hospitals() {
 
       {/* Results bar */}
       <div className="flex items-center justify-between mb-5">
-        <p className="font-monda text-sm text-gray-500">
-          {loading ? 'Searching…' : `${hospitals.length} hospital${hospitals.length !== 1 ? 's' : ''} found`}
-        </p>
+        <div className="flex flex-col">
+          <p className="font-monda text-sm text-gray-500">
+            {loading ? 'Searching…' : `${hospitals.length} hospital${hospitals.length !== 1 ? 's' : ''} found`}
+          </p>
+          {locationError && (
+            <p className="font-monda text-xs text-orange-600 mt-1">
+              ⚠️ Location unavailable: {locationError}. Showing stored distances.
+            </p>
+          )}
+          {!userLocation && !locationError && (
+            <p className="font-monda text-xs text-blue-600 mt-1">
+              📍 Getting your location for accurate distances…
+            </p>
+          )}
+        </div>
         {hospitals.length === 0 && !loading && (
           <button
             onClick={handleSeed}

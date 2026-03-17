@@ -34,6 +34,7 @@ export const login = (data) => api.post('/auth/login', data);
 
 // Hospitals
 export const getHospitals = (params) => api.get('/hospitals', { params });
+export const getNearbyHospitals = (params) => api.get('/hospitals/nearby', { params });
 export const getHospitalById = (id) => api.get(`/hospitals/${id}`);
 export const seedHospitals = () => api.get('/hospitals/seed');
 

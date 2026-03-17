@@ -9,7 +9,6 @@ const hospitalUserSchema = new mongoose.Schema({
   address: { type: String, required: true },
   hospitalType: { type: String, enum: ['Government','Private','Trust','Clinic'], default: 'Private' },
   specialties: [{ type: String }],
-  distance: { type: Number, default: 0 },
   isApproved: { type: Boolean, default: true },
   registeredHospitalId: { type: mongoose.Schema.Types.ObjectId, ref: 'Hospital' }
 }, { timestamps: true });
