@@ -9,6 +9,7 @@ import Hospitals from './pages/Hospitals';
 import HospitalDetail from './pages/HospitalDetail';
 import Availability from './pages/Availability';
 import Transfer from './pages/Transfer';
+import TransferDetail from './pages/TransferDetail';
 import { HospitalAuthProvider } from './context/HospitalAuthContext';
 import HospitalLogin from './pages/HospitalLogin';
 import HospitalSignup from './pages/HospitalSignup';
@@ -50,6 +51,9 @@ export default function App() {
             } />
             <Route path="/transfer" element={
               <ProtectedRoute><Layout><Transfer /></Layout></ProtectedRoute>
+            } />
+            <Route path="/transfers/:id" element={
+              <ProtectedRoute><Layout><TransferDetail /></Layout></ProtectedRoute>
             } />
 
             {/* Hospital portal */}

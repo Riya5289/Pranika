@@ -43,9 +43,20 @@ export const getResources = (params) => api.get('/resources', { params });
 export const seedResources = () => api.get('/resources/seed');
 
 // Transfers
-export const createTransfer = (data) => api.post('/transfers', data);
-export const getTransfers = () => api.get('/transfers');
-export const getSuggestedHospitals = (params) => api.get('/transfers/suggestions', { params });
+export const createTransfer = (payload) => {
+  const form = new FormData();
+  form.append('patientInfo', JSON.stringify(payload.patientInfo));
+  form.append('fromHospitalId', payload.fromHospitalId);
+  form.append('toHospitalId', payload.toHospitalId);
+  if (payload.medicalNotes) form.append('medicalNotes', payload.medicalNotes);
+  (payload.attachments || []).forEach((file) => form.append('attachments', file));
+  return api.post('/v1/transfers/create', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+};
+export const getTransfers = () => api.get('/v1/transfers');
+export const getTransferById = (id) => api.get(`/v1/transfers/${id}`);
+export const getSuggestedHospitals = (params) => api.get('/v1/transfers/suggestions', { params });
 
 // Hospital Auth
 export const hospitalSignup = (data) => api.post('/hospital-auth/signup', data);

@@ -2,8 +2,28 @@ const TransferRequest = require('../models/TransferRequest');
 const Hospital = require('../models/Hospital');
 const Resource = require('../models/Resource');
 const { sendTransferRequestEmail } = require('../services/email.services');
-const path = require('path');
 const fs = require('fs');
+
+function toPublicAttachment(att) {
+  if (!att) return att;
+  const storageName = att.path ? att.path.split('/').pop() : null;
+  const url = storageName ? `/uploads/transfers/${storageName}` : null;
+  return {
+    filename: att.filename,
+    mimetype: att.mimetype,
+    size: att.size,
+    url
+  };
+}
+
+function toPublicTransfer(t) {
+  if (!t) return t;
+  const obj = t.toObject ? t.toObject() : t;
+  return {
+    ...obj,
+    attachments: Array.isArray(obj.attachments) ? obj.attachments.map(toPublicAttachment) : []
+  };
+}
 
 exports.createTransfer = async (req, res) => {
   try {
@@ -28,7 +48,8 @@ exports.createTransfer = async (req, res) => {
       req.files.forEach(file => {
         attachments.push({
           filename: file.originalname,
-          path: file.path,
+          // store relative path; we expose it via /uploads
+          path: `transfers/${file.filename}`,
           mimetype: file.mimetype,
           size: file.size
         });
@@ -55,11 +76,15 @@ exports.createTransfer = async (req, res) => {
 
     // Send email with attachments
     try {
-      await sendTransferRequestEmail(
-        toHospital.contact.email,
-        emailData,
-        attachments
-      );
+      if (toHospital.contact && toHospital.contact.email) {
+        await sendTransferRequestEmail(
+          toHospital.contact.email,
+          emailData,
+          attachments
+        );
+      } else {
+        console.warn('No email address found for target hospital, skipping email notification');
+      }
     } catch (emailError) {
       console.error('Email sending failed:', emailError);
       // Don't fail the request if email fails, but log it
@@ -72,7 +97,7 @@ exports.createTransfer = async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'Transfer request created successfully',
-      data: transfer
+      data: toPublicTransfer(transfer)
     });
   } catch (error) {
     // Cleanup uploaded files on error
@@ -90,9 +115,23 @@ exports.createTransfer = async (req, res) => {
 exports.getTransfers = async (req, res) => {
   try {
     const transfers = await TransferRequest.find({ requestedBy: req.user._id })
-      .populate('targetHospital', 'name address')
+      .populate('fromHospitalId', 'name address contact')
+      .populate('toHospitalId', 'name address contact')
       .sort({ createdAt: -1 });
-    res.json({ success: true, count: transfers.length, data: transfers });
+    res.json({ success: true, count: transfers.length, data: transfers.map(toPublicTransfer) });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getTransferById = async (req, res) => {
+  try {
+    const transfer = await TransferRequest.findOne({ _id: req.params.id, requestedBy: req.user._id })
+      .populate('fromHospitalId', 'name address contact')
+      .populate('toHospitalId', 'name address contact');
+
+    if (!transfer) return res.status(404).json({ success: false, message: 'Transfer not found' });
+    res.json({ success: true, data: toPublicTransfer(transfer) });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -101,15 +140,42 @@ exports.getTransfers = async (req, res) => {
 exports.getSuggestedHospitals = async (req, res) => {
   try {
     const { requiredResources = [] } = req.query;
-    const resources = await Resource.find().populate('hospitalId', 'name address distance contact specialties');
+    const resources = await Resource.find().populate('hospitalId', 'name address contact specialties location');
 
-    const suggestions = resources
-      .filter(r => {
-        const needs = Array.isArray(requiredResources) ? requiredResources : [requiredResources];
-        if (needs.includes('ICU Bed') && r.icuBeds.available === 0) return false;
-        if (needs.includes('Ventilator') && r.ventilators.available === 0) return false;
+    let filteredResources = resources.filter(r => r.hospitalId); // Only include resources with valid hospitalId
+
+    // If requiredResources is provided and not empty, filter by them
+    if (Array.isArray(requiredResources) && requiredResources.length > 0) {
+      filteredResources = filteredResources.filter(r => {
+        if (requiredResources.includes('ICU Bed') && r.icuBeds.available === 0) return false;
+        if (requiredResources.includes('Ventilator') && r.ventilators.available === 0) return false;
         return true;
-      })
+      });
+    }
+
+    // If no resources match the criteria, return some default hospitals
+    if (filteredResources.length === 0) {
+      // Get some hospitals directly if no resources match
+      const hospitals = await Hospital.find().limit(5);
+      const defaultSuggestions = hospitals.map(h => ({
+        hospital: {
+          _id: h._id,
+          name: h.name,
+          address: h.address,
+          contact: h.contact,
+          distance: 5 // Default distance
+        },
+        resources: {
+          icuBeds: { available: 0, total: 0 },
+          ventilators: { available: 0, total: 0 }
+        },
+        eta: `${Math.ceil(5 * 3)} min`
+      }));
+      return res.json({ success: true, data: defaultSuggestions });
+    }
+
+    const suggestions = filteredResources
+      .filter(r => r.hospitalId) // Double check hospital exists
       .map(r => ({
         hospital: r.hospitalId,
         resources: r,

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { getSuggestedHospitals, createTransfer, getTransfers } from '../services/api';
+import { Link } from 'react-router-dom';
+import { getSuggestedHospitals, createTransfer, getTransfers, getHospitals } from '../services/api';
 import StatusBadge from '../components/StatusBadge';
 
 const CONDITIONS = ['Critical', 'Serious', 'Stable', 'Emergency'];
@@ -7,7 +8,11 @@ const RESOURCES = ['ICU Bed', 'Ventilator', 'Specialist', 'Emergency Surgery'];
 
 function SuggestedCard({ suggestion, onSelect, selected }) {
   const { hospital, resources, eta } = suggestion;
-  const isSelected = selected?._id === hospital._id;
+  
+  // Guard against null hospital or missing _id
+  if (!hospital || !hospital._id) return null;
+  
+  const isSelected = selected && selected._id === hospital._id;
 
   return (
     <div
@@ -20,8 +25,8 @@ function SuggestedCard({ suggestion, onSelect, selected }) {
     >
       <div className="flex items-start justify-between mb-3">
         <div>
-          <h3 className="font-roboto font-bold text-[15px] text-gray-800">{hospital.name}</h3>
-          <p className="font-monda text-xs text-gray-400 mt-0.5">{hospital.address}</p>
+          <h3 className="font-roboto font-bold text-[15px] text-gray-800">{hospital?.name || 'Unknown Hospital'}</h3>
+          <p className="font-monda text-xs text-gray-400 mt-0.5">{hospital?.address || 'Address not available'}</p>
         </div>
         {isSelected && (
           <span className="w-5 h-5 rounded-full bg-[#EB5E28] flex items-center justify-center flex-shrink-0">
@@ -43,7 +48,7 @@ function SuggestedCard({ suggestion, onSelect, selected }) {
         </div>
         <div className="bg-gray-50 rounded-lg px-3 py-2">
           <span className="text-gray-400 block">Distance</span>
-          <span className="font-bold text-gray-700">{hospital.distance} km</span>
+          <span className="font-bold text-gray-700">{hospital?.distance || 'N/A'} km</span>
         </div>
         <div className="bg-gray-50 rounded-lg px-3 py-2">
           <span className="text-gray-400 block">ETA</span>
@@ -67,9 +72,13 @@ function SuggestedCard({ suggestion, onSelect, selected }) {
 
 export default function Transfer() {
   const [form, setForm] = useState({
-    currentHospital: '',
+    patientName: '',
+    patientAge: '',
     patientCondition: '',
-    requiredResources: [],
+    medicalHistory: '',
+    fromHospitalId: '',
+    medicalNotes: '',
+    attachments: []
   });
   const [suggestions, setSuggestions] = useState([]);
   const [selectedSuggestion, setSelectedSuggestion] = useState(null);
@@ -81,32 +90,46 @@ export default function Transfer() {
   const [pastTransfers, setPastTransfers] = useState([]);
   const [loadingPast, setLoadingPast] = useState(true);
   const [activeTab, setActiveTab] = useState('new'); // 'new' | 'history'
+  const [hospitals, setHospitals] = useState([]);
+  const [loadingHospitals, setLoadingHospitals] = useState(true);
 
   useEffect(() => {
     getTransfers()
       .then(res => setPastTransfers(res.data.data))
       .catch(() => {})
       .finally(() => setLoadingPast(false));
+
+    getHospitals()
+      .then(res => setHospitals(res.data.data))
+      .catch(() => {})
+      .finally(() => setLoadingHospitals(false));
   }, [transferResult]);
 
-  const toggleResource = (r) => {
-    setForm(f => ({
-      ...f,
-      requiredResources: f.requiredResources.includes(r)
-        ? f.requiredResources.filter(x => x !== r)
-        : [...f.requiredResources, r],
-    }));
-    setSuggestions([]);
-    setSelectedSuggestion(null);
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    setForm(f => ({ ...f, attachments: files }));
+  };
+
+  const removeFile = (index) => {
+    setForm(f => ({ ...f, attachments: f.attachments.filter((_, i) => i !== index) }));
   };
 
   const handleSearch = async () => {
     if (!form.patientCondition) return setError('Please select patient condition.');
+    if (!form.fromHospitalId) return setError('Please select from hospital.');
     setError('');
     setLoadingSuggestions(true);
     setSelectedSuggestion(null);
     try {
-      const params = { requiredResources: form.requiredResources };
+      // Derive required resources based on condition
+      const requiredResources = [];
+      if (form.patientCondition === 'Critical' || form.patientCondition === 'Emergency') {
+        requiredResources.push('ICU Bed', 'Ventilator');
+      } else if (form.patientCondition === 'Serious') {
+        requiredResources.push('ICU Bed');
+      }
+      
+      const params = { requiredResources };
       const res = await getSuggestedHospitals(params);
       setSuggestions(res.data.data);
     } catch {
@@ -120,12 +143,19 @@ export default function Transfer() {
     setSubmitting(true);
     setError('');
     try {
-      const res = await createTransfer({
-        patientCondition: form.patientCondition,
-        currentHospital: form.currentHospital,
-        requiredResources: form.requiredResources,
-        targetHospital: selectedSuggestion.hospital._id,
-      });
+      const payload = {
+        patientInfo: {
+          name: form.patientName,
+          age: parseInt(form.patientAge),
+          condition: form.patientCondition,
+          medicalHistory: form.medicalHistory
+        },
+        fromHospitalId: form.fromHospitalId,
+        toHospitalId: selectedSuggestion.hospital._id,
+        medicalNotes: form.medicalNotes,
+        attachments: form.attachments
+      };
+      const res = await createTransfer(payload);
       setTransferResult(res.data.data);
       setConfirmed(true);
     } catch (err) {
@@ -135,7 +165,15 @@ export default function Transfer() {
   };
 
   const handleReset = () => {
-    setForm({ currentHospital: '', patientCondition: '', requiredResources: [] });
+    setForm({
+      patientName: '',
+      patientAge: '',
+      patientCondition: '',
+      medicalHistory: '',
+      fromHospitalId: '',
+      medicalNotes: '',
+      attachments: []
+    });
     setSuggestions([]);
     setSelectedSuggestion(null);
     setConfirmed(false);
@@ -199,10 +237,9 @@ export default function Transfer() {
 
                 <div className="text-left bg-gray-50 rounded-2xl p-5 mb-6 space-y-3">
                   {[
-                    ['Target Hospital', transferResult.targetHospital?.name],
-                    ['Patient Condition', transferResult.patientCondition],
-                    ['Required Resources', transferResult.requiredResources?.join(', ') || '—'],
-                    ['Estimated ETA', transferResult.estimatedETA],
+                    ['Patient', transferResult.patientInfo?.name],
+                    ['Target Hospital', transferResult.toHospitalId?.name],
+                    ['Condition', transferResult.patientInfo?.condition],
                     ['Status', null],
                   ].map(([label, val]) => (
                     <div key={label} className="flex items-center justify-between">
@@ -240,13 +277,28 @@ export default function Transfer() {
 
                   <div className="flex flex-col gap-4">
                     <div className="flex flex-col gap-1.5">
-                      <label className="font-monda text-sm font-bold text-gray-700">Current Hospital</label>
+                      <label className="font-monda text-sm font-bold text-gray-700">Patient Name</label>
                       <input
                         type="text"
-                        placeholder="Hospital name or location"
-                        value={form.currentHospital}
-                        onChange={e => setForm({ ...form, currentHospital: e.target.value })}
+                        placeholder="Enter patient name"
+                        value={form.patientName}
+                        onChange={e => setForm({ ...form, patientName: e.target.value })}
                         className="input-field"
+                        required
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="font-monda text-sm font-bold text-gray-700">Patient Age</label>
+                      <input
+                        type="number"
+                        placeholder="Enter age"
+                        value={form.patientAge}
+                        onChange={e => setForm({ ...form, patientAge: e.target.value })}
+                        className="input-field"
+                        min="1"
+                        max="150"
+                        required
                       />
                     </div>
 
@@ -256,30 +308,82 @@ export default function Transfer() {
                         value={form.patientCondition}
                         onChange={e => setForm({ ...form, patientCondition: e.target.value })}
                         className="input-field"
+                        required
                       >
                         <option value="">Select condition…</option>
                         {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </div>
 
-                    <div className="flex flex-col gap-2">
-                      <label className="font-monda text-sm font-bold text-gray-700">Required Resources</label>
-                      <div className="grid grid-cols-2 gap-2">
-                        {RESOURCES.map(r => (
-                          <button
-                            key={r}
-                            type="button"
-                            onClick={() => toggleResource(r)}
-                            className={`rounded-xl px-3 py-2.5 font-monda text-xs font-bold border-2 text-left transition-all ${
-                              form.requiredResources.includes(r)
-                                ? 'border-[#EB5E28] bg-[#EB5E28]/5 text-[#EB5E28]'
-                                : 'border-gray-200 text-gray-600 hover:border-[#EFA7A7]'
-                            }`}
-                          >
-                            {form.requiredResources.includes(r) ? '✓ ' : ''}{r}
-                          </button>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="font-monda text-sm font-bold text-gray-700">Medical History</label>
+                      <textarea
+                        placeholder="Brief medical history (optional)"
+                        value={form.medicalHistory}
+                        onChange={e => setForm({ ...form, medicalHistory: e.target.value })}
+                        className="input-field resize-none"
+                        rows="3"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="font-monda text-sm font-bold text-gray-700">From Hospital</label>
+                      <select
+                        value={form.fromHospitalId}
+                        onChange={e => setForm({ ...form, fromHospitalId: e.target.value })}
+                        className="input-field"
+                        required
+                        disabled={loadingHospitals}
+                      >
+                        <option value="">
+                          {loadingHospitals ? 'Loading hospitals…' : 'Select hospital…'}
+                        </option>
+                        {hospitals.map(h => (
+                          <option key={h._id} value={h._id}>{h.name}</option>
                         ))}
-                      </div>
+                      </select>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="font-monda text-sm font-bold text-gray-700">Medical Notes</label>
+                      <textarea
+                        placeholder="Additional medical notes (optional)"
+                        value={form.medicalNotes}
+                        onChange={e => setForm({ ...form, medicalNotes: e.target.value })}
+                        className="input-field resize-none"
+                        rows="3"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="font-monda text-sm font-bold text-gray-700">Attachments</label>
+                      <input
+                        type="file"
+                        multiple
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={handleFileChange}
+                        className="input-field"
+                      />
+                      <p className="font-monda text-xs text-gray-400">Upload patient documents (PDF, JPG, PNG) - Max 10 files, 5MB each</p>
+                      
+                      {form.attachments.length > 0 && (
+                        <div className="mt-2 space-y-2">
+                          {form.attachments.map((file, index) => (
+                            <div key={index} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+                              <span className="font-monda text-sm text-gray-700 truncate">{file.name}</span>
+                              <button
+                                type="button"
+                                onClick={() => removeFile(index)}
+                                className="text-red-500 hover:text-red-700 ml-2"
+                              >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M18 6L6 18M6 6l12 12"/>
+                                </svg>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <button
@@ -299,9 +403,9 @@ export default function Transfer() {
                     <h3 className="font-roboto font-bold text-gray-800 mb-4">Confirm Transfer</h3>
                     <div className="space-y-2.5 mb-5">
                       {[
+                        ['Patient', form.patientName],
                         ['To', selectedSuggestion.hospital.name],
                         ['Condition', form.patientCondition || '—'],
-                        ['Resources', form.requiredResources.join(', ') || 'None specified'],
                         ['ETA', selectedSuggestion.eta],
                       ].map(([k, v]) => (
                         <div key={k} className="flex justify-between items-start gap-2">
@@ -386,32 +490,34 @@ export default function Transfer() {
           ) : pastTransfers.length > 0 ? (
             <div className="space-y-3">
               {pastTransfers.map(t => (
-                <div key={t._id} className="card p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-roboto font-bold text-[15px] text-gray-800">
-                        → {t.targetHospital?.name || 'Unknown Hospital'}
-                      </h3>
-                      <StatusBadge status={t.status?.toLowerCase()} />
-                    </div>
-                    <p className="font-monda text-xs text-gray-400">
-                      From: {t.currentHospital || '—'} · Condition: {t.patientCondition}
-                    </p>
-                    {t.requiredResources?.length > 0 && (
-                      <p className="font-monda text-xs text-gray-400 mt-0.5">
-                        Resources: {t.requiredResources.join(', ')}
+                <Link key={t._id} to={`/transfers/${t._id}`} className="block">
+                  <div className="card p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-[#EB5E28]/30 transition-colors">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-roboto font-bold text-[15px] text-gray-800">
+                          {t.patientInfo?.name} → {t.toHospitalId?.name || 'Unknown Hospital'}
+                        </h3>
+                        <StatusBadge status={t.status?.toLowerCase()} />
+                      </div>
+                      <p className="font-monda text-xs text-gray-400">
+                        From: {t.fromHospitalId?.name || '—'} · Condition: {t.patientInfo?.condition}
                       </p>
-                    )}
+                      {t.attachments?.length > 0 && (
+                        <p className="font-monda text-xs text-gray-400 mt-0.5">
+                          {t.attachments.length} document{t.attachments.length !== 1 ? 's' : ''} attached
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <p className="font-monda text-xs text-gray-400">
+                        {new Date(t.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </p>
+                      {t.estimatedETA && (
+                        <p className="font-monda text-xs font-bold text-[#EB5E28] mt-0.5">ETA: {t.estimatedETA}</p>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-monda text-xs text-gray-400">
-                      {new Date(t.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </p>
-                    {t.estimatedETA && (
-                      <p className="font-monda text-xs font-bold text-[#EB5E28] mt-0.5">ETA: {t.estimatedETA}</p>
-                    )}
-                  </div>
-                </div>
+                </Link>
               ))}
             </div>
           ) : (
