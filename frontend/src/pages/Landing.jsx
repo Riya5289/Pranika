@@ -244,6 +244,20 @@ export default function Landing() {
                 Get Started Free
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
               </Link>
+              <Link to="/hospital/signup" style={{
+                display: 'inline-flex', alignItems: 'center', gap: '8px',
+                background: 'transparent', color: '#EB5E28',
+                fontFamily: 'Monda, sans-serif', fontWeight: 700, fontSize: '15px',
+                padding: '14px 32px', borderRadius: '999px',
+                border: '2px solid #EB5E28', textDecoration: 'none',
+                transition: 'all 0.25s',
+              }}
+                onMouseOver={e => { e.currentTarget.style.background = '#EB5E28'; e.currentTarget.style.color = 'white'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                onMouseOut={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#EB5E28'; e.currentTarget.style.transform = ''; }}
+              >
+                Hospital Sign Up
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+              </Link>
               <a href="#modules" style={{
                 display: 'inline-flex', alignItems: 'center', gap: '8px',
                 background: 'transparent', color: '#111',
