@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { validateCaptcha } = require('../utils/captcha');
+const { sendRegistrationEmail } = require('../services/email.services');
 
 const signToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -26,6 +27,15 @@ exports.signup = async (req, res) => {
     }
 
     const user = await User.create({ name, email, password });
+
+    // Send welcome email
+    try {
+      await sendRegistrationEmail(email, name);
+    } catch (emailError) {
+      console.error('Error sending welcome email:', emailError);
+      // Note: We don't fail the registration if email fails
+    }
+
     res.status(201).json({ success: true, message: 'Account created successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

@@ -3,6 +3,7 @@ const HospitalUser = require('../models/HospitalUser');
 const Hospital = require('../models/Hospital');
 const Resource = require('../models/Resource');
 const { validateCaptcha } = require('../utils/captcha');
+const { sendRegistrationEmail } = require('../services/email.services');
 
 const signToken = (id, role) =>
   jwt.sign({ id, role }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -52,6 +53,14 @@ exports.hospitalSignup = async (req, res) => {
 
     hospitalUser.registeredHospitalId = hospital._id;
     await hospitalUser.save();
+
+    // Send welcome email
+    try {
+      await sendRegistrationEmail(email, hospitalName);
+    } catch (emailError) {
+      console.error('Error sending welcome email:', emailError);
+      // Note: We don't fail the registration if email fails
+    }
 
     res.status(201).json({ success: true, message: 'Hospital registered successfully' });
   } catch (error) {
