@@ -13,6 +13,7 @@ import { HospitalAuthProvider } from './context/HospitalAuthContext';
 import HospitalLogin from './pages/HospitalLogin';
 import HospitalSignup from './pages/HospitalSignup';
 import HospitalDashboard from './pages/HospitalDashboard';
+import Landing from './pages/Landing';
 
 function Layout({ children }) {
   return (
@@ -29,33 +30,35 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <HospitalAuthProvider>
-        <Routes>
-          {/* Public */}
-          <Route path="/login"  element={<Layout><Login /></Layout>} />
-          <Route path="/signup" element={<Layout><Signup /></Layout>} />
+          <Routes>
+            {/* Public */}
+            <Route path="/" element={<Layout><Landing /></Layout>} />
+            <Route path="/login" element={<Layout><Login /></Layout>} />
+            <Route path="/signup" element={<Layout><Signup /></Layout>} />
+            <Route path="/hospital/login" element={<Layout><HospitalLogin /></Layout>} />
+            <Route path="/hospital/signup" element={<Layout><HospitalSignup /></Layout>} />
 
-          {/* Protected */}
-          <Route path="/hospitals" element={
-            <ProtectedRoute><Layout><Hospitals /></Layout></ProtectedRoute>
-          } />
-          <Route path="/hospitals/:id" element={
-            <ProtectedRoute><Layout><HospitalDetail /></Layout></ProtectedRoute>
-          } />
-          <Route path="/availability" element={
-            <ProtectedRoute><Layout><Availability /></Layout></ProtectedRoute>
-          } />
-          <Route path="/transfer" element={
-            <ProtectedRoute><Layout><Transfer /></Layout></ProtectedRoute>
-          } />
+            {/* Protected — users */}
+            <Route path="/hospitals" element={
+              <ProtectedRoute><Layout><Hospitals /></Layout></ProtectedRoute>
+            } />
+            <Route path="/hospitals/:id" element={
+              <ProtectedRoute><Layout><HospitalDetail /></Layout></ProtectedRoute>
+            } />
+            <Route path="/availability" element={
+              <ProtectedRoute><Layout><Availability /></Layout></ProtectedRoute>
+            } />
+            <Route path="/transfer" element={
+              <ProtectedRoute><Layout><Transfer /></Layout></ProtectedRoute>
+            } />
 
-          {/* Redirects */}
-          <Route path="/" element={<Navigate to="/hospitals" replace />} />
-          <Route path="/hospital" element={<Navigate to="/hospital/login" replace />} />
-          <Route path="/hospital/login" element={<Layout><HospitalLogin /></Layout>} />
-          <Route path="/hospital/signup" element={<Layout><HospitalSignup /></Layout>} />
-          <Route path="/hospital/dashboard" element={<Layout><HospitalDashboard /></Layout>} />
-          <Route path="*" element={<Navigate to="/hospitals" replace />} />
-        </Routes>
+            {/* Hospital portal */}
+            <Route path="/hospital" element={<Navigate to="/hospital/login" replace />} />
+            <Route path="/hospital/dashboard" element={<Layout><HospitalDashboard /></Layout>} />
+
+            {/* Catch-all */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
         </HospitalAuthProvider>
       </AuthProvider>
     </BrowserRouter>
