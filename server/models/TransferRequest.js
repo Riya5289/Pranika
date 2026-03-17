@@ -1,21 +1,29 @@
 const mongoose = require('mongoose');
 
 const transferSchema = new mongoose.Schema({
-  patientCondition: {
-    type: String,
-    enum: ['Critical', 'Serious', 'Stable', 'Emergency'],
-    required: true
+  patientInfo: {
+    name: { type: String, required: true },
+    age: { type: Number, required: true },
+    condition: { type: String, required: true },
+    medicalHistory: { type: String }
   },
-  currentHospital: { type: String, required: true },
-  requiredResources: [{
-    type: String,
-    enum: ['ICU Bed', 'Ventilator', 'Specialist', 'Emergency Surgery']
-  }],
-  targetHospital: {
+  fromHospitalId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Hospital',
     required: true
   },
+  toHospitalId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Hospital',
+    required: true
+  },
+  medicalNotes: { type: String },
+  attachments: [{
+    filename: { type: String },
+    path: { type: String },
+    mimetype: { type: String },
+    size: { type: Number }
+  }],
   requestedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

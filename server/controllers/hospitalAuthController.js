@@ -11,8 +11,8 @@ exports.hospitalSignup = async (req, res) => {
   try {
     const {
       hospitalName, email, password, confirmPassword,
-      phone, address, hospitalType, specialties, distance,
-      captchaId, captchaAnswer
+      phone, address, hospitalType, specialties,
+      lat, lng, captchaId, captchaAnswer
     } = req.body;
 
     const captchaResult = validateCaptcha(captchaId, captchaAnswer);
@@ -29,15 +29,16 @@ exports.hospitalSignup = async (req, res) => {
     // Create hospital user account
     const hospitalUser = await HospitalUser.create({
       hospitalName, email, password, phone, address,
-      hospitalType, distance: parseFloat(distance) || 0,
+      hospitalType,
       specialties: Array.isArray(specialties) ? specialties : specialties?.split(',').map(s => s.trim()).filter(Boolean)
     });
 
     // Auto-create Hospital record + blank Resource record
     const hospital = await Hospital.create({
-      name: hospitalName, address, contact: phone,
+      name: hospitalName, address, contact: { phone, email },
       specialties: hospitalUser.specialties,
-      hospitalType, distance: hospitalUser.distance
+      hospitalType,
+      location: { lat: parseFloat(lat), lng: parseFloat(lng) }
     });
 
     await Resource.create({

@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const passport = require('passport');
 require('dotenv').config();
 
 const authRoutes = require('./routes/auth');
@@ -11,6 +12,8 @@ const captchaRoutes = require('./routes/captcha');
 const hospitalAuthRoutes = require('./routes/hospitalAuth');
 const hospitalDashboardRoutes = require('./routes/hospitalDashboard');
 const specialistRoutes = require('./routes/specialists');
+const googleAuthRoutes = require('./routes/googleAuth');
+const emailRoutes = require('./routes/email');
 
 const app = express();
 
@@ -20,16 +23,19 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
+app.use(passport.initialize());
 
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/captcha', captchaRoutes);
 app.use('/api/hospitals', hospitalRoutes);
 app.use('/api/resources', resourceRoutes);
-app.use('/api/transfers', transferRoutes);
+app.use('/api/v1/transfers', transferRoutes);
 app.use('/api/hospital-auth', hospitalAuthRoutes);
 app.use('/api/hospital', hospitalDashboardRoutes);
 app.use('/api/specialists', specialistRoutes);
+app.use('/auth', googleAuthRoutes);
+app.use('/api/email', emailRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'OK', message: 'Pranika API running' }));

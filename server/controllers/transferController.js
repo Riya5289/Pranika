@@ -1,28 +1,88 @@
 const TransferRequest = require('../models/TransferRequest');
 const Hospital = require('../models/Hospital');
 const Resource = require('../models/Resource');
+const { sendTransferRequestEmail } = require('../services/email.services');
+const path = require('path');
+const fs = require('fs');
 
 exports.createTransfer = async (req, res) => {
   try {
-    const { patientCondition, currentHospital, requiredResources, targetHospital } = req.body;
+    const { patientInfo, fromHospitalId, toHospitalId, medicalNotes } = req.body;
 
-    const hospital = await Hospital.findById(targetHospital);
-    if (!hospital) return res.status(404).json({ success: false, message: 'Target hospital not found' });
+    // Validate required fields
+    if (!patientInfo || !fromHospitalId || !toHospitalId) {
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
 
-    const eta = `${Math.ceil(hospital.distance * 3)} minutes`;
+    // Get hospital details for email
+    const fromHospital = await Hospital.findById(fromHospitalId);
+    const toHospital = await Hospital.findById(toHospitalId);
 
+    if (!fromHospital || !toHospital) {
+      return res.status(404).json({ success: false, message: 'Hospital not found' });
+    }
+
+    // Process uploaded files
+    const attachments = [];
+    if (req.files && req.files.length > 0) {
+      req.files.forEach(file => {
+        attachments.push({
+          filename: file.originalname,
+          path: file.path,
+          mimetype: file.mimetype,
+          size: file.size
+        });
+      });
+    }
+
+    // Create transfer request
     const transfer = await TransferRequest.create({
-      patientCondition,
-      currentHospital,
-      requiredResources,
-      targetHospital,
-      requestedBy: req.user._id,
-      estimatedETA: eta
+      patientInfo: JSON.parse(patientInfo), // Assuming sent as JSON string
+      fromHospitalId,
+      toHospitalId,
+      medicalNotes,
+      attachments,
+      requestedBy: req.user._id
     });
 
-    await transfer.populate('targetHospital', 'name address contact');
-    res.status(201).json({ success: true, data: transfer });
+    // Prepare email data
+    const emailData = {
+      patientInfo: transfer.patientInfo,
+      fromHospitalName: fromHospital.name,
+      toHospitalName: toHospital.name,
+      medicalNotes: transfer.medicalNotes
+    };
+
+    // Send email with attachments
+    try {
+      await sendTransferRequestEmail(
+        toHospital.contact.email,
+        emailData,
+        attachments
+      );
+    } catch (emailError) {
+      console.error('Email sending failed:', emailError);
+      // Don't fail the request if email fails, but log it
+    }
+
+    // Populate response
+    await transfer.populate('fromHospitalId', 'name address contact');
+    await transfer.populate('toHospitalId', 'name address contact');
+
+    res.status(201).json({
+      success: true,
+      message: 'Transfer request created successfully',
+      data: transfer
+    });
   } catch (error) {
+    // Cleanup uploaded files on error
+    if (req.files) {
+      req.files.forEach(file => {
+        if (fs.existsSync(file.path)) {
+          fs.unlinkSync(file.path);
+        }
+      });
+    }
     res.status(500).json({ success: false, message: error.message });
   }
 };

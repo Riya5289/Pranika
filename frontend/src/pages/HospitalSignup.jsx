@@ -11,7 +11,7 @@ export default function HospitalSignup() {
   const [form, setForm] = useState({
     hospitalName: '', email: '', password: '', confirmPassword: '',
     phone: '', address: '', hospitalType: 'Private',
-    distance: '', specialties: []
+    lat: '', lng: '', specialties: []
   });
   const [captchaAnswer, setCaptchaAnswer] = useState('');
   const [captchaId, setCaptchaId] = useState('');
@@ -91,9 +91,20 @@ export default function HospitalSignup() {
                 </select>
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="font-monda text-sm font-bold text-gray-700">Distance from City (km)</label>
-                <input type="number" value={form.distance} onChange={e => setForm({...form, distance: e.target.value})}
-                  placeholder="e.g. 5.2" className="input-field" step="0.1" min="0" />
+                <label className="font-monda text-sm font-bold text-gray-700">Latitude</label>
+                <input type="number" value={form.lat} onChange={e => setForm({...form, lat: e.target.value})}
+                  placeholder="e.g. 23.2599" className="input-field" step="any" required />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="font-monda text-sm font-bold text-gray-700">Longitude</label>
+                <input type="number" value={form.lng} onChange={e => setForm({...form, lng: e.target.value})}
+                  placeholder="e.g. 77.4126" className="input-field" step="any" required />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                {/* Empty for balance */}
               </div>
             </div>
 
