@@ -185,6 +185,54 @@ VITE_API_URL=http://localhost:5000/api
 
 ---
 
+## Extension Idea: AI Voice Emergency Triage (Deepgram + Gemini)
+
+Good idea. It reduces operator load and speeds up triage if implemented with strict safety guardrails.
+
+### Implementation Overview
+
+1. **Call intake + transcription**
+   - Stream caller audio to Deepgram in real time.
+   - Keep partial + final transcripts with timestamps.
+2. **Structured triage extraction (Gemini)**
+   - Send transcript to Gemini with a strict JSON schema output:
+     - casualty type (trauma, stroke, cardiac, burn, etc.)
+     - severity (critical/high/medium/low)
+     - required specialists/surgeons
+     - key resources (ICU, OT, ventilator, blood, etc.)
+     - confidence score and missing data questions
+3. **Hospital matching**
+   - Map casualty/resources to your existing specialist + resource models.
+   - Filter hospitals with currently available specialist/resources.
+   - Rank by distance from reporter location + readiness score.
+4. **Dispatch handoff**
+   - Return top 3 options with ETA, contact, and reason.
+   - Escalate to a human operator when confidence is low.
+
+### Key Suggestions
+
+- Use **LLM function-calling / JSON mode** only (never free text parsing in backend logic).
+- Add a **confidence threshold** and mandatory human override path.
+- Store **raw transcript + extracted fields + final decision** for auditability.
+- Ask follow-up questions when critical fields are missing (location, age, consciousness, bleeding, breathing).
+
+### Main Challenges
+
+- **ASR quality in noisy/multilingual calls**: accents, panic speech, overlap.
+- **Clinical misclassification risk**: wrong specialty mapping can delay care.
+- **Latency budget**: transcription + LLM + matching must stay near real time.
+- **Data privacy/compliance**: sensitive health + location data handling.
+- **Operational reliability**: API failures/rate limits for free-tier keys.
+
+### Practical Start (MVP)
+
+- Begin with a **human-in-the-loop assistant**:
+  - voice transcript + LLM triage suggestion + ranked hospitals,
+  - final confirmation by dispatcher.
+- After collecting accuracy metrics, gradually automate low-risk cases.
+
+---
+
 ## Production Deployment
 
 1. Build frontend: `cd frontend && npm run build` → deploy `dist/` to Vercel/Netlify
