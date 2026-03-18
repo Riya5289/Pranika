@@ -44,9 +44,6 @@ export default function Header() {
             <NavLink to="/hospitals" className={navLinkClass}>Hospitals</NavLink>
             <NavLink to="/availability" className={navLinkClass}>Live Availability</NavLink>
             <NavLink to="/transfer" className={navLinkClass}>Transfers</NavLink>
-            <a href="/hospital/login" className="font-monda text-[15px] text-white/80 hover:text-white transition-colors">
-              Hospital Portal
-            </a>
             <button
               onClick={handleLogout}
               className="rounded-full border border-white text-white bg-transparent font-monda font-bold px-5 py-1.5 text-[14px] hover:bg-white hover:text-[#EFA7A7] transition-all duration-200"

@@ -1,10 +1,33 @@
 const Resource = require('../models/Resource');
 const Hospital = require('../models/Hospital');
+const { calculateDistance } = require('../utils/distance');
 
 exports.getResources = async (req, res) => {
   try {
-    const { filter } = req.query;
-    let resources = await Resource.find().populate('hospitalId', 'name address distance');
+    const { filter, lat, lng } = req.query;
+    let resources = await Resource.find().populate('hospitalId', 'name address location hospitalType specialties contact');
+
+    // If user location provided, compute distance to each hospital and attach it
+    if (lat && lng) {
+      const userLat = parseFloat(lat);
+      const userLng = parseFloat(lng);
+      resources = resources.map(r => {
+        const hosp = r.hospitalId;
+        if (hosp && hosp.location && typeof hosp.location.lat === 'number' && typeof hosp.location.lng === 'number') {
+          const dist = calculateDistance(userLat, userLng, hosp.location.lat, hosp.location.lng);
+          // Attach distance in kilometers (rounded to one decimal)
+          r = r.toObject ? r.toObject() : JSON.parse(JSON.stringify(r));
+          r.hospitalId = { ...r.hospitalId, distance: Math.round(dist * 10) / 10 };
+        }
+        return r;
+      });
+      // Sort by distance when available
+      resources.sort((a, b) => {
+        const da = a.hospitalId?.distance ?? Number.POSITIVE_INFINITY;
+        const db = b.hospitalId?.distance ?? Number.POSITIVE_INFINITY;
+        return da - db;
+      });
+    }
 
     if (filter === 'icu') resources = resources.filter(r => r.icuBeds.available > 0);
     if (filter === 'general') resources = resources.filter(r => r.generalBeds.available > 0);

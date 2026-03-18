@@ -147,6 +147,37 @@ export default function Hospitals() {
             </p>
           )}
         </div>
+        <div className="flex items-center gap-3">
+          {!userLocation && (
+            <button
+              onClick={async () => {
+                setLocationError(null);
+                try {
+                  const loc = await getCurrentLocation();
+                  setUserLocation(loc);
+                  fetchHospitals();
+                } catch (err) {
+                  setLocationError(err.message || 'Failed to get location');
+                }
+              }}
+              className="text-sm text-blue-600 hover:underline"
+            >
+              Use my location
+            </button>
+          )}
+          {userLocation && (
+            <button
+              onClick={() => {
+                setUserLocation(null);
+                setLocationError(null);
+                fetchHospitals();
+              }}
+              className="text-sm text-gray-600 hover:underline"
+            >
+              Clear location
+            </button>
+          )}
+        </div>
         {hospitals.length === 0 && !loading && (
           <button
             onClick={handleSeed}

@@ -13,17 +13,18 @@ export default function PatientManagement() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [searchStatus, setSearchStatus] = useState('admitted');
+  const [searchStatus, setSearchStatus] = useState('');
   const [editingPatient, setEditingPatient] = useState(null);
 
   // Form states
   const [formData, setFormData] = useState({
     name: '',
     age: '',
+    contact: '',
     gender: '',
     medicalCondition: '',
     admissionDate: new Date().toISOString().split('T')[0],
-    status: 'admitted',
+    status: 'Admitted',
     notes: '',
   });
 
@@ -36,7 +37,9 @@ export default function PatientManagement() {
     try {
       setLoading(true);
       setError('');
-      const response = await getHospitalPatients({ status: searchStatus });
+      const params = {};
+      if (searchStatus) params.status = searchStatus;
+      const response = await getHospitalPatients(params);
       setPatients(response.data.data || []);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load patients');
@@ -47,7 +50,7 @@ export default function PatientManagement() {
 
   const handleAddPatient = async (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.age || !formData.medicalCondition) {
+    if (!formData.name || !formData.age || !formData.medicalCondition || !formData.contact) {
       setError('Please fill in all required fields');
       return;
     }
@@ -56,19 +59,31 @@ export default function PatientManagement() {
       setLoading(true);
       setError('');
       
-      await addPatient({
-        ...formData,
-        age: parseInt(formData.age),
-      });
+      // map frontend fields to backend-required fields
+      const payload = {
+        patientName: formData.name,
+        age: parseInt(formData.age, 10),
+        gender: formData.gender,
+        contact: formData.contact,
+        condition: formData.medicalCondition,
+        medicalHistory: formData.medicalHistory || '',
+        department: formData.department || '',
+        allergies: formData.allergies || '',
+        bloodGroup: formData.bloodGroup || '',
+        notes: formData.notes || ''
+      };
+
+      await addPatient(payload);
       
       setSuccess('Patient added successfully!');
       setFormData({
         name: '',
         age: '',
+        contact: '',
         gender: '',
         medicalCondition: '',
         admissionDate: new Date().toISOString().split('T')[0],
-        status: 'admitted',
+        status: 'Admitted',
         notes: '',
       });
       
@@ -91,15 +106,17 @@ export default function PatientManagement() {
     try {
       setLoading(true);
       setError('');
-      
-      await updatePatient(editingPatient._id, {
-        name: formData.name,
-        age: parseInt(formData.age),
+      const payload = {
+        patientName: formData.name,
+        age: parseInt(formData.age, 10),
         gender: formData.gender,
-        medicalCondition: formData.medicalCondition,
+        contact: formData.contact,
+        condition: formData.medicalCondition,
         status: formData.status,
-        notes: formData.notes,
-      });
+        notes: formData.notes || ''
+      };
+
+      await updatePatient(editingPatient._id, payload);
       
       setSuccess('Patient updated successfully!');
       setEditingPatient(null);
@@ -118,12 +135,13 @@ export default function PatientManagement() {
   const handleEditClick = (patient) => {
     setEditingPatient(patient);
     setFormData({
-      name: patient.name,
-      age: patient.age.toString(),
-      gender: patient.gender,
-      medicalCondition: patient.medicalCondition,
-      admissionDate: patient.admissionDate.split('T')[0],
-      status: patient.status,
+      name: patient.patientName || patient.name || '',
+      age: (patient.age != null ? patient.age.toString() : ''),
+      contact: patient.contact || '',
+      gender: patient.gender || '',
+      medicalCondition: patient.condition || patient.medicalCondition || '',
+      admissionDate: patient.admissionDate ? patient.admissionDate.split('T')[0] : new Date().toISOString().split('T')[0],
+      status: patient.status || '',
       notes: patient.notes || '',
     });
     setActiveTab('edit');
@@ -134,17 +152,19 @@ export default function PatientManagement() {
     setFormData({
       name: '',
       age: '',
+      contact: '',
       gender: '',
       medicalCondition: '',
       admissionDate: new Date().toISOString().split('T')[0],
-      status: 'admitted',
+      status: 'Admitted',
       notes: '',
     });
     setActiveTab('list');
   };
 
   const getStatusColor = (status) => {
-    switch (status) {
+    const key = (status || '').toString().toLowerCase().replace(/\s+/g, '-');
+    switch (key) {
       case 'admitted':
         return 'text-blue-600 bg-blue-50 px-3 py-1 rounded-full text-sm';
       case 'ready-for-transfer':
@@ -203,10 +223,11 @@ export default function PatientManagement() {
               setFormData({
                 name: '',
                 age: '',
+                contact: '',
                 gender: '',
                 medicalCondition: '',
                 admissionDate: new Date().toISOString().split('T')[0],
-                status: 'admitted',
+                status: 'Admitted',
                 notes: '',
               });
               setActiveTab('add');
@@ -231,10 +252,10 @@ export default function PatientManagement() {
                 onChange={(e) => setSearchStatus(e.target.value)}
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="admitted">Admitted</option>
-                <option value="ready-for-transfer">Ready for Transfer</option>
-                <option value="transferred">Transferred</option>
                 <option value="">All Status</option>
+                <option value="Admitted">Admitted</option>
+                <option value="Ready for Transfer">Ready for Transfer</option>
+                <option value="Transferred">Transferred</option>
               </select>
             </div>
 
@@ -263,11 +284,11 @@ export default function PatientManagement() {
                   <tbody>
                     {patients.map((patient) => (
                       <tr key={patient._id} className="border-b border-gray-200 hover:bg-gray-50">
-                        <td className="px-4 py-3 font-medium text-gray-800">{patient.name}</td>
+                        <td className="px-4 py-3 font-medium text-gray-800">{patient.patientName || patient.name}</td>
                         <td className="px-4 py-3 text-gray-700">
                           {patient.age} yrs / {patient.gender}
                         </td>
-                        <td className="px-4 py-3 text-gray-700">{patient.medicalCondition}</td>
+                        <td className="px-4 py-3 text-gray-700">{patient.condition || patient.medicalCondition}</td>
                         <td className="px-4 py-3">
                           <span className={getStatusColor(patient.status)}>
                             {patient.status.replace('-', ' ')}
@@ -312,6 +333,21 @@ export default function PatientManagement() {
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Enter patient name"
+                  required
+                />
+              </div>
+
+              {/* Contact */}
+              <div className="mb-4">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Contact *
+                </label>
+                <input
+                  type="text"
+                  value={formData.contact}
+                  onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g., +91-9876543210"
                   required
                 />
               </div>
@@ -390,9 +426,9 @@ export default function PatientManagement() {
                   onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="admitted">Admitted</option>
-                  <option value="ready-for-transfer">Ready for Transfer</option>
-                  <option value="transferred">Transferred</option>
+                  <option value="Admitted">Admitted</option>
+                  <option value="Ready for Transfer">Ready for Transfer</option>
+                  <option value="Transferred">Transferred</option>
                 </select>
               </div>
 

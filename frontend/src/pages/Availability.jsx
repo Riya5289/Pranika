@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getResources, seedResources } from '../services/api';
+import { getCurrentLocation } from '../utils/distance';
 import StatusBadge from '../components/StatusBadge';
 import { useNavigate } from 'react-router-dom';
 
@@ -29,12 +30,19 @@ export default function Availability() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
   const [seeding, setSeeding] = useState(false);
+  const [userLocation, setUserLocation] = useState(null);
   const navigate = useNavigate();
 
   const fetchResources = async () => {
     setLoading(true);
     try {
-      const res = await getResources({ filter });
+      // Attach user location if available so backend returns distances
+      const params = { filter };
+      if (userLocation) {
+        params.lat = userLocation.lat;
+        params.lng = userLocation.lng;
+      }
+      const res = await getResources(params);
       setResources(res.data.data);
     } catch {
       setResources([]);
@@ -42,7 +50,22 @@ export default function Availability() {
     setLoading(false);
   };
 
-  useEffect(() => { fetchResources(); }, [filter]);
+  useEffect(() => { fetchResources(); }, [filter, userLocation]);
+
+  // Try to get user's location for distance calculations
+  useEffect(() => {
+    let mounted = true;
+    if (!userLocation) {
+      getCurrentLocation()
+        .then((loc) => {
+          if (mounted) setUserLocation(loc);
+        })
+        .catch(() => {
+          // silently ignore location failures; backend will return stored data
+        });
+    }
+    return () => { mounted = false; };
+  }, []);
 
   const handleSeed = async () => {
     setSeeding(true);

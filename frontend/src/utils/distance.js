@@ -50,11 +50,17 @@ export function getCurrentLocation() {
         });
       },
       (error) => {
-        reject(error);
+        // Map common errors to friendlier messages
+        let message = 'Unable to retrieve location';
+        if (error.code === error.PERMISSION_DENIED) message = 'Permission denied for location access';
+        else if (error.code === error.POSITION_UNAVAILABLE) message = 'Position unavailable';
+        else if (error.code === error.TIMEOUT) message = 'Location request timed out';
+        else if (error.message) message = error.message;
+        reject(new Error(message));
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
+        timeout: 20000,
         maximumAge: 300000 // 5 minutes
       }
     );

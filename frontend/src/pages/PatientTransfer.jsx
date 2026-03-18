@@ -11,6 +11,7 @@ import {
   markPatientInTransit,
   completePatientTransfer,
 } from '../services/api';
+import { useHospitalAuth } from '../context/HospitalAuthContext';
 
 export default function PatientTransfer() {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ export default function PatientTransfer() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const { hospital: currentHospital } = useHospitalAuth();
 
   // Search state
   const [specialty, setSpecialty] = useState('');
@@ -26,7 +28,7 @@ export default function PatientTransfer() {
 
   // Patient selection state
   const [patients, setPatients] = useState([]);
-  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [selectedPatients, setSelectedPatients] = useState([]);
   const [transferNotes, setTransferNotes] = useState('');
 
   // Pending requests state
@@ -61,8 +63,15 @@ export default function PatientTransfer() {
       const response = await searchHospitalsBySpecialty({
         specialty: specialty.trim(),
       });
-      setSearchResults(response.data.data || []);
-      if (response.data.data?.length === 0) {
+      // Filter out the initiating hospital from results (check possible id fields)
+      const results = response.data.data || [];
+      const myHospitalId = currentHospital?.hospitalId || currentHospital?._id || currentHospital?.id || null;
+      const filtered = results.filter((h) => {
+        if (!myHospitalId) return true;
+        return String(h._id) !== String(myHospitalId);
+      });
+      setSearchResults(filtered);
+      if (filtered.length === 0) {
         setError('No hospitals found with this specialty');
       }
     } catch (err) {
@@ -91,8 +100,8 @@ export default function PatientTransfer() {
 
   // Initiate transfer
   const handleInitiateTransfer = async () => {
-    if (!selectedHospital || !selectedPatient) {
-      setError('Please select both hospital and patient');
+    if (!selectedHospital || selectedPatients.length === 0) {
+      setError('Please select a hospital and at least one patient');
       return;
     }
 
@@ -100,18 +109,23 @@ export default function PatientTransfer() {
       setLoading(true);
       setError('');
 
-      await initiatePatientTransfer({
-        patientId: selectedPatient._id,
-        receivingHospitalId: selectedHospital._id,
-        requiredSpecialty: specialty,
-        transferNotes: transferNotes,
-      });
+      // Create one transfer request per selected patient
+      const promises = selectedPatients.map((patientId) =>
+        initiatePatientTransfer({
+          patientId,
+          toHospitalId: selectedHospital._id,
+          requiredSpecialty: specialty,
+          transferReason: transferNotes,
+        })
+      );
 
-      setSuccess('Transfer request created successfully!');
+      await Promise.all(promises);
+
+      setSuccess('Transfer request(s) created successfully!');
       setTimeout(() => {
         setSuccess('');
         setSelectedHospital(null);
-        setSelectedPatient(null);
+        setSelectedPatients([]);
         setTransferNotes('');
         setSpecialty('');
         setSearchResults([]);
@@ -151,7 +165,7 @@ export default function PatientTransfer() {
       }
 
       await approvePatientTransfer(transferId, {
-        eta: parseInt(eta),
+        estimatedArrivalTime: parseInt(eta),
       });
 
       setSuccess('Transfer approved!');
@@ -178,7 +192,7 @@ export default function PatientTransfer() {
       setError('');
 
       await rejectPatientTransfer(transferId, {
-        reason: reasonForReject,
+        rejectionReason: reasonForReject,
       });
 
       setSuccess('Transfer rejected!');
@@ -344,21 +358,26 @@ export default function PatientTransfer() {
             {/* Search Form */}
             <form onSubmit={handleSearchHospitals} className="mb-6">
               <div className="flex gap-4">
-                <input
-                  type="text"
-                  value={specialty}
-                  onChange={(e) => setSpecialty(e.target.value)}
-                  placeholder="Enter specialty (e.g., Cardiology, Orthopedics)"
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:bg-blue-400"
-                >
-                  {loading ? 'Searching...' : 'Search'}
-                </button>
-              </div>
+                  <select
+                    value={specialty}
+                    onChange={(e) => setSpecialty(e.target.value)}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  >
+                    <option value="">Select specialty</option>
+                    <option value="Oncology">Oncology</option>
+                    <option value="Neurology">Neurology</option>
+                    <option value="Pediatrics">Pediatrics</option>
+                    <option value="Gynecology">Gynecology</option>
+                  </select>
+                  <button
+                    type="submit"
+                    disabled={loading || !specialty}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:bg-blue-400"
+                  >
+                    {loading ? 'Searching...' : 'Search'}
+                  </button>
+                </div>
             </form>
 
             {/* Hospital Results */}
@@ -396,27 +415,37 @@ export default function PatientTransfer() {
             {selectedHospital && patients.length > 0 && (
               <div className="mb-8">
                 <h3 className="text-lg font-semibold mb-4 text-gray-800">
-                  Select Patient to Transfer
+                  Select Patient(s) to Transfer
                 </h3>
                 <div className="space-y-2 mb-6">
                   {patients.map((patient) => (
                     <label
                       key={patient._id}
-                      className="flex items-center p-4 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer"
+                      className="flex items-start p-4 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer"
                     >
                       <input
-                        type="radio"
+                        type="checkbox"
                         name="patient"
                         value={patient._id}
-                        checked={selectedPatient?._id === patient._id}
-                        onChange={() => setSelectedPatient(patient)}
-                        className="w-4 h-4 text-blue-600"
+                        checked={selectedPatients.includes(patient._id)}
+                        onChange={() => {
+                          if (selectedPatients.includes(patient._id)) {
+                            setSelectedPatients(selectedPatients.filter((id) => id !== patient._id));
+                          } else {
+                            setSelectedPatients([...selectedPatients, patient._id]);
+                          }
+                        }}
+                        className="w-4 h-4 text-blue-600 mt-1"
                       />
-                      <div className="ml-4">
-                        <p className="font-semibold text-gray-800">{patient.name}</p>
+                      <div className="ml-4 flex-1">
+                        <p className="font-semibold text-gray-800">{patient.patientName || patient.name || 'Unnamed'}</p>
                         <p className="text-sm text-gray-600">
-                          {patient.age} yrs • {patient.medicalCondition}
+                          {patient.age} yrs • {patient.gender || 'N/A'} • {patient.condition || patient.medicalCondition || 'N/A'}
                         </p>
+                        <p className="text-sm text-gray-600 mt-1">Contact: {patient.contact || 'N/A'}</p>
+                        {patient.medicalHistory && (
+                          <p className="text-sm text-gray-600 mt-1">History: {patient.medicalHistory}</p>
+                        )}
                       </div>
                     </label>
                   ))}
@@ -439,7 +468,7 @@ export default function PatientTransfer() {
                 {/* Initiate Transfer Button */}
                 <button
                   onClick={handleInitiateTransfer}
-                  disabled={loading || !selectedPatient}
+                  disabled={loading || selectedPatients.length === 0}
                   className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:bg-green-400 font-semibold"
                 >
                   {loading ? 'Processing...' : 'Initiate Transfer'}

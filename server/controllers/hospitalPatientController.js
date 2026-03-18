@@ -56,7 +56,12 @@ exports.getHospitalPatients = async (req, res) => {
 
     let query = { hospitalId: requesterRecord.registeredHospitalId };
     if (status) {
-      query.status = status;
+      // Normalize status for flexible matching: accept 'admitted', 'Admitted',
+      // 'ready-for-transfer' or 'Ready for Transfer' by comparing case-insensitively
+      // and allowing hyphens or spaces.
+      const normalized = status.toString().replace(/-/g, ' ').trim();
+      // Use a case-insensitive exact regex match
+      query.status = { $regex: `^${normalized}$`, $options: 'i' };
     }
 
     const patients = await HospitalPatient.find(query)

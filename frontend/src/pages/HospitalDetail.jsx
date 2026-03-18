@@ -99,12 +99,6 @@ export default function HospitalDetail() {
               >
                 Check Availability
               </button>
-              <button
-                onClick={() => navigate('/transfer')}
-                className="w-full rounded-full py-3 font-monda font-bold border-2 border-[#EB5E28] text-[#EB5E28] hover:bg-[#EB5E28] hover:text-white transition-all"
-              >
-                Request Transfer
-              </button>
             </div>
           </div>
 
